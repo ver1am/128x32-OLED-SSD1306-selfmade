@@ -1,76 +1,60 @@
 #include <avr/io.h>
-#include "FastSerial.cpp"
+// #include "FastSerial.cpp"
 #include "Delay.cpp"
 #include "Buttons.h"
-#include "Byte.h"
-#include "ssd1306.h"
+#include "Graphics.h"
+#include "Random.h"
 
-char framebuffer[(DEVICE_X * DEVICE_Y) / 8] = {0}; // 512
+static uint8_t x = 0;
+static uint8_t y = 0;
 
-inline void setupoled() {
-    ByteStart();
-    SendByte(DEVICE_WRITE);
-    SendByte(SETTINGS);
-    SendByte(TURN_OFF);
-    SendByte(PAGES);
-    SendByte(HRZ);
-    SendByte(POMP);
-    SendByte(POMP_ON);
-    SendByte(TURN_ON);
-    Stop();
-}
+// 0
+//3 1
+// 2
 
-void Setpixel(uint8_t x, uint8_t y, uint8_t stat = 1) {
-    // Вычисляем индекс байта в буфере
-    uint16_t index = x + (y / 8) * DEVICE_X;
-    // Вычисляем битовую маску для конкретного пикселя в байте
-    uint8_t mask = 1 << (y % 8);
-
-    if (stat) {
-        framebuffer[index] |= mask;   // Устанавливаем бит (включаем пиксель)
-    } else {
-        framebuffer[index] &= ~mask;  // Сбрасываем бит (выключаем пиксель)
+void fun(uint8_t dir) {
+    switch (dir) {
+        case 0:
+            x++;
+            break;
+        case 1:
+            y++;
+            break;
+        case 2:
+            x--;
+            break;
+        case 3:
+            y--;  
+            break; 
     }
-}
-
-void ToVRAM() {
-    ByteStart();
-    SendByte(DEVICE_WRITE);
-    SendByte(PIXELS);
-    for (int i = 0; i < ((DEVICE_X * DEVICE_Y) / 8); i++) {
-        SendByte(framebuffer[i]);
-    }
-    Stop();
-}
-
-void clear() {
-    for (int i = 0; i < (DEVICE_X * DEVICE_Y) / 8; i++) {
-        framebuffer[i] = 0;
-    }
-    ToVRAM();
-}
-
-void printS() {
-    FastSerial::print("KNOPKA");
+    gfx::Setpixel(x,y);
+    gfx::ToVRAM();
 }
 
 int main() {
     TWSR = 0x00; // Прескалер = 1
     TWBR = 72;   // Стабильные 100 кГц на частоте 16 МГц
-    FastSerial::begin(9600);
-    setup();
-    setupoled();
-    clear();
-    Setpixel(64,0);
-    Setpixel(64,16);
-    Setpixel(96,16);
-    // for (int i = 0; i < DEVICE_X; i++) {
-    //     Setpixel(i,0);
-    // }
-    ToVRAM();
+
+    // FastSerial::begin(9600);
+    btn::setup();
+    rng::init(0);
+
+    // INIT
+    ByteStart();
+    for (uint8_t byte : init) {
+        SendByte(byte);
+    }
+    Stop();
+
+    gfx::clear();
+    gfx::Setpxs(0,0,rng::rng(48,57));
+    // UI::Text("A1234567890",0,0,9);
+
     while (1) {
-        press(BLUE_LEVO,printS);
-        press(BLUE_PRAVO,printS);
+        btn::hold(BLUE_LEVO,fun,0);
+        btn::hold(BLUE_PRAVO,fun,2);
+        btn::hold(RED_LEVO,fun,1);
+        btn::hold(RED_PRAVO,fun,3);
         delay_ms(100);
     }
 }

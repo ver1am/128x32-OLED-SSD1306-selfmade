@@ -11,7 +11,7 @@ void ByteStart() {
 
 void SendByte(char byte) {
     TWDR = byte;
-    TWCR = (1 << TWEN) | (1 << TWINT);
+    TWCR = (1 << TWEN) | (1 << TWINT) | (1 << TWEA);
     waitcmp();
 }
 
